@@ -524,49 +524,53 @@ module Searchkick
       aggs = options[:aggs]
       payload[:aggs] = {}
 
-      aggs = Hash[aggs.map { |f| [f, {}] }] if aggs.is_a?(Array) # convert to more advanced syntax
+      if aggs.is_a?(Hash) && aggs[:body]
+        payload[:aggs] = aggs[:body]        
+      else
+        aggs = Hash[aggs.map { |f| [f, {}] }] if aggs.is_a?(Array) # convert to more advanced syntax
 
-      aggs.each do |field, agg_options|
-        size = agg_options[:limit] ? agg_options[:limit] : 1_000
-        shared_agg_options = agg_options.slice(:order, :min_doc_count)
+        aggs.each do |field, agg_options|
+          size = agg_options[:limit] ? agg_options[:limit] : 1_000
+          shared_agg_options = agg_options.slice(:order, :min_doc_count)
 
-        if agg_options[:ranges]
-          payload[:aggs][field] = {
-            range: {
-              field: agg_options[:field] || field,
-              ranges: agg_options[:ranges]
-            }.merge(shared_agg_options)
-          }
-        elsif agg_options[:date_ranges]
-          payload[:aggs][field] = {
-            date_range: {
-              field: agg_options[:field] || field,
-              ranges: agg_options[:date_ranges]
-            }.merge(shared_agg_options)
-          }
-        else
-          payload[:aggs][field] = {
-            terms: {
-              field: agg_options[:field] || field,
-              size: size
-            }.merge(shared_agg_options)
-          }
-        end
-
-        where = {}
-        where = (options[:where] || {}).reject { |k| k == field } unless options[:smart_aggs] == false
-        agg_filters = where_filters(where.merge(agg_options[:where] || {}))
-        if agg_filters.any?
-          payload[:aggs][field] = {
-            filter: {
-              bool: {
-                must: agg_filters
-              }
-            },
-            aggs: {
-              field => payload[:aggs][field]
+          if agg_options[:ranges]
+            payload[:aggs][field] = {
+              range: {
+                field: agg_options[:field] || field,
+                ranges: agg_options[:ranges]
+              }.merge(shared_agg_options)
             }
-          }
+          elsif agg_options[:date_ranges]
+            payload[:aggs][field] = {
+              date_range: {
+                field: agg_options[:field] || field,
+                ranges: agg_options[:date_ranges]
+              }.merge(shared_agg_options)
+            }
+          else
+            payload[:aggs][field] = {
+              terms: {
+                field: agg_options[:field] || field,
+                size: size
+              }.merge(shared_agg_options)
+            }
+          end
+
+          where = {}
+          where = (options[:where] || {}).reject { |k| k == field } unless options[:smart_aggs] == false
+          agg_filters = where_filters(where.merge(agg_options[:where] || {}))
+          if agg_filters.any?
+            payload[:aggs][field] = {
+              filter: {
+                bool: {
+                  must: agg_filters
+                }
+              },
+              aggs: {
+                field => payload[:aggs][field]
+              }
+            }
+          end
         end
       end
     end
