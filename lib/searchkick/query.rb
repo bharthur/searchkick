@@ -47,13 +47,13 @@ module Searchkick
 
     def params
       index =
-        if options[:index_name]
-          Array(options[:index_name]).map { |v| v.respond_to?(:searchkick_index) ? v.searchkick_index.name : v }.join(",")
-        elsif searchkick_index
-          searchkick_index.name
-        else
-          "_all"
-        end
+      if options[:index_name]
+        Array(options[:index_name]).map { |v| v.respond_to?(:searchkick_index) ? v.searchkick_index.name : v }.join(",")
+      elsif searchkick_index
+        searchkick_index.name
+      else
+        "_all"
+      end
 
       params = {
         index: index,
@@ -122,11 +122,11 @@ module Searchkick
       if status_code == 404
         raise MissingIndexError, "Index missing - run #{reindex_command}"
       elsif status_code == 500 && (
-        e.message.include?("IllegalArgumentException[minimumSimilarity >= 1]") ||
-        e.message.include?("No query registered for [multi_match]") ||
-        e.message.include?("[match] query does not support [cutoff_frequency]]") ||
-        e.message.include?("No query registered for [function_score]]")
-      )
+          e.message.include?("IllegalArgumentException[minimumSimilarity >= 1]") ||
+          e.message.include?("No query registered for [multi_match]") ||
+          e.message.include?("[match] query does not support [cutoff_frequency]]") ||
+          e.message.include?("No query registered for [function_score]]")
+        )
 
         raise UnsupportedVersionError, "This version of Searchkick requires Elasticsearch 1.0 or greater"
       elsif status_code == 400
@@ -200,13 +200,13 @@ module Searchkick
             queries = []
 
             misspellings =
-              if options.key?(:misspellings)
-                options[:misspellings]
-              elsif options.key?(:mispellings)
-                options[:mispellings] # why not?
-              else
-                true
-              end
+            if options.key?(:misspellings)
+              options[:misspellings]
+            elsif options.key?(:mispellings)
+              options[:mispellings] # why not?
+            else
+              true
+            end
 
             if misspellings.is_a?(Hash) && misspellings[:below] && !@misspellings_below
               @misspellings_below = misspellings[:below].to_i
@@ -216,13 +216,13 @@ module Searchkick
             if misspellings != false
               edit_distance = (misspellings.is_a?(Hash) && (misspellings[:edit_distance] || misspellings[:distance])) || 1
               transpositions =
-                if misspellings.is_a?(Hash) && misspellings.key?(:transpositions)
-                  {fuzzy_transpositions: misspellings[:transpositions]}
-                elsif below14?
-                  {}
-                else
-                  {fuzzy_transpositions: true}
-                end
+              if misspellings.is_a?(Hash) && misspellings.key?(:transpositions)
+                {fuzzy_transpositions: misspellings[:transpositions]}
+              elsif below14?
+                {}
+              else
+                {fuzzy_transpositions: true}
+              end
               prefix_length = (misspellings.is_a?(Hash) && misspellings[:prefix_length]) || 0
               default_max_expansions = @misspellings_below ? 20 : 3
               max_expansions = (misspellings.is_a?(Hash) && misspellings[:max_expansions]) || default_max_expansions
@@ -238,12 +238,12 @@ module Searchkick
               }
 
               match_type =
-                if field.end_with?(".phrase")
-                  field = field.sub(/\.phrase\z/, ".analyzed")
-                  :match_phrase
-                else
-                  :match
-                end
+              if field.end_with?(".phrase")
+                field = field.sub(/\.phrase\z/, ".analyzed")
+                :match_phrase
+              else
+                :match
+              end
 
               shared_options[:operator] = operator if match_type == :match || below50?
 
@@ -278,11 +278,11 @@ module Searchkick
           if conversions_field && options[:conversions] != false
             # wrap payload in a bool query
             script_score =
-              if below12?
-                {script_score: {script: "doc['count'].value"}}
-              else
-                {field_value_factor: {field: "#{conversions_field}.count"}}
-              end
+            if below12?
+              {script_score: {script: "doc['count'].value"}}
+            else
+              {field_value_factor: {field: "#{conversions_field}.count"}}
+            end
 
             payload = {
               bool: {
@@ -397,25 +397,25 @@ module Searchkick
       boost_fields = {}
       fields = options[:fields] || searchkick_options[:searchable]
       fields =
-        if fields
-          if options[:autocomplete]
-            fields.map { |f| "#{f}.autocomplete" }
-          else
-            fields.map do |value|
-              k, v = value.is_a?(Hash) ? value.to_a.first : [value, options[:match] || searchkick_options[:match] || :word]
-              k2, boost = k.to_s.split("^", 2)
-              field = "#{k2}.#{v == :word ? 'analyzed' : v}"
-              boost_fields[field] = boost.to_f if boost
-              field
-            end
-          end
+      if fields
+        if options[:autocomplete]
+          fields.map { |f| "#{f}.autocomplete" }
         else
-          if options[:autocomplete]
-            (searchkick_options[:autocomplete] || []).map { |f| "#{f}.autocomplete" }
-          else
-            ["_all"]
+          fields.map do |value|
+            k, v = value.is_a?(Hash) ? value.to_a.first : [value, options[:match] || searchkick_options[:match] || :word]
+            k2, boost = k.to_s.split("^", 2)
+            field = "#{k2}.#{v == :word ? 'analyzed' : v}"
+            boost_fields[field] = boost.to_f if boost
+            field
           end
         end
+      else
+        if options[:autocomplete]
+          (searchkick_options[:autocomplete] || []).map { |f| "#{f}.autocomplete" }
+        else
+          ["_all"]
+        end
+      end
       [boost_fields, fields]
     end
 
@@ -525,7 +525,7 @@ module Searchkick
       payload[:aggs] = {}
 
       if aggs.is_a?(Hash) && aggs[:body]
-        payload[:aggs] = aggs[:body]        
+        payload[:aggs] = aggs[:body]
       else
         aggs = Hash[aggs.map { |f| [f, {}] }] if aggs.is_a?(Array) # convert to more advanced syntax
 
@@ -629,36 +629,47 @@ module Searchkick
     end
 
     def set_filters(payload, filters)
-      if options[:facets] || options[:aggs]
-        if below20?
-          payload[:filter] = {
-            and: filters
-          }
-        else
-          payload[:post_filter] = {
-            bool: {
-              filter: filters
+      if options[:custom]
+        payload[:query] = {
+          filtered: {
+            query: payload[:query],
+            filter: {
+              and: filters
             }
           }
-        end
+        }
       else
-        # more efficient query if no facets
-        if below20?
-          payload[:query] = {
-            filtered: {
-              query: payload[:query],
-              filter: {
-                and: filters
+        if options[:facets] || options[:aggs]
+          if below20?
+            payload[:filter] = {
+              and: filters
+            }
+          else
+            payload[:post_filter] = {
+              bool: {
+                filter: filters
               }
             }
-          }
+          end
         else
-          payload[:query] = {
-            bool: {
-              must: payload[:query],
-              filter: filters
+          # more efficient query if no facets
+          if below20?
+            payload[:query] = {
+              filtered: {
+                query: payload[:query],
+                filter: {
+                  and: filters
+                }
+              }
             }
-          }
+          else
+            payload[:query] = {
+              bool: {
+                must: payload[:query],
+                filter: filters
+              }
+            }
+          end
         end
       end
     end
@@ -728,18 +739,18 @@ module Searchkick
                 filters << term_filters(field, op_value)
               else
                 range_query =
-                  case op
-                  when :gt
-                    {from: op_value, include_lower: false}
-                  when :gte
-                    {from: op_value, include_lower: true}
-                  when :lt
-                    {to: op_value, include_upper: false}
-                  when :lte
-                    {to: op_value, include_upper: true}
-                  else
-                    raise "Unknown where operator: #{op.inspect}"
-                  end
+                case op
+                when :gt
+                  {from: op_value, include_lower: false}
+                when :gte
+                  {from: op_value, include_lower: true}
+                when :lt
+                  {to: op_value, include_upper: false}
+                when :lte
+                  {to: op_value, include_upper: true}
+                else
+                  raise "Unknown where operator: #{op.inspect}"
+                end
                 # issue 132
                 if (existing = filters.find { |f| f[:range] && f[:range][field] })
                   existing[:range][field].merge!(range_query)
@@ -801,12 +812,12 @@ module Searchkick
         log = value.key?(:log) ? value[:log] : options[:log]
         value[:factor] ||= 1
         script_score =
-          if below12?
-            script = log ? "log(doc['#{field}'].value + 2.718281828)" : "doc['#{field}'].value"
-            {script_score: {script: "#{value[:factor].to_f} * #{script}"}}
-          else
-            {field_value_factor: {field: field, factor: value[:factor].to_f, modifier: log ? "ln2p" : nil}}
-          end
+        if below12?
+          script = log ? "log(doc['#{field}'].value + 2.718281828)" : "doc['#{field}'].value"
+          {script_score: {script: "#{value[:factor].to_f} * #{script}"}}
+        else
+          {field_value_factor: {field: field, factor: value[:factor].to_f, modifier: log ? "ln2p" : nil}}
+        end
 
         {
           filter: {
